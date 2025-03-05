@@ -6,48 +6,56 @@ import nltk
 from nltk.corpus import stopwords
 import ssl
 import os
-from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor
+from concurrent.futures import ProcessPoolExecutor
 import threading
 
-try:
-    _create_unverified_https_context = ssl._create_unverified_context
-except AttributeError:
-    pass
-else:
-    ssl._create_default_https_context = _create_unverified_https_context
+def initialize_nltk():
+    """Initialize NLTK resources if they don't exist."""
+    try:
+        # Check if resources are already downloaded
+        nltk.data.find('tokenizers/punkt')
+        nltk.data.find('corpora/wordnet')
+        nltk.data.find('corpora/omw-1.4')
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        # Only download if resources are missing
+        try:
+            _create_unverified_https_context = ssl._create_unverified_context
+            ssl._create_default_https_context = _create_unverified_https_context
+        except AttributeError:
+            pass
+        
+        nltk.download('punkt', quiet=True)
+        nltk.download('wordnet', quiet=True)
+        nltk.download('omw-1.4', quiet=True)
+        nltk.download('stopwords', quiet=True)
 
-nltk.download('punkt_tab')
-nltk.download('punkt')
-nltk.download('wordnet')
-nltk.download('omw-1.4')
-nltk.download('stopwords')
-
-try:
-    stopwords.words('english')
-except LookupError:
-    print("NLTK stopwords corpus not found. Downloading...")
-    nltk.download('stopwords')
+# Initialize NLTK resources
+initialize_nltk()
 
 wordPattern = re.compile(r'[!"#€%&/()=?*+´¨^~\[\]{}<>|;:,.-_\[\]`´\s\ ]')
-allWords = []  # List to store all words
-uniqueWords = set()  # Set to store unique words
+uniqueWords = set()
+allWords = 0
+stop_words = set(stopwords.words('english'))
 
 num_workers = os.cpu_count()
 mutex = threading.Lock()
 
 def update_word_arrays(text):
-    global allWords, uniqueWords
+    global uniqueWords
     if not isinstance(text, str):
         return
     
     tokens = text.split()
     with mutex:
-        allWords.extend(tokens)
+        allWords += len(tokens)
         uniqueWords.update(tokens)
 
-datePattern1 = r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+[0-9]+,?\s+[0-9]+\b'
-datePattern2 = r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+[0-9]+,?\s+[0-9]+\b'
-datePattern3 = r'([0-9]+)-([0-9]+)-([0-9]+) ?([0-9]*):?([0-9]*):?([0-9]*)(\.[0-9]+)?'
+date_patterns = re.compile(
+    r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\.?\s+\d+,?\s+\d+\b|'
+    r'\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d+,?\s+\d+\b|'
+    r'(\d+)-(\d+)-(\d+) ?(\d*):?(\d*):?(\d*)(\.\d+)?'
+)
 
 '''
 Here to clean the text data, we are using the cleantext library.
@@ -57,9 +65,7 @@ def clean_column(text):
         return text
     
     text = text.lower()
-    text = re.sub(datePattern3, ' <DATE> ', text, flags=re.IGNORECASE)
-    text = re.sub(datePattern2, ' <DATE> ', text, flags=re.IGNORECASE)
-    text = re.sub(datePattern1, ' <DATE> ', text, flags=re.IGNORECASE)
+    text = re.sub(date_patterns, ' <DATE> ', text)
 
     text = clean(text,
             fix_unicode=True,
@@ -84,8 +90,8 @@ def remove_stopwords(text):
     if not isinstance(text, str):
         return text
     
-    tokens = nltk.word_tokenize(text)
-    filtered_tokens = [word for word in tokens if word not in stopwords.words('english')]
+    tokens = text.split(' ')
+    filtered_tokens = [word for word in tokens if word not in stop_words]
     return ' '.join(filtered_tokens)
 
 '''
@@ -111,20 +117,17 @@ def process_text(text):
 
 def process_df(df):
     """Process the entire DataFrame."""
-    rows = df['content'].dropna().tolist()
     
     # Clean, remove stopwords, and stem the text
-    with ThreadPoolExecutor(max_workers=num_workers) as executor:
-        df['content'] = list(executor.map(process_text, rows))
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        df['content'] = list(executor.map(process_text, df['content']))
     
     # Update word arrays
-    with ThreadPoolExecutor(max_workers=num_workers) as executor:
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
         executor.map(update_word_arrays, df['content'])
     
-    print(f"Words after processing: {len(allWords)}")
-    print(f"Unique words after processing: {len(uniqueWords)}")
     return df
-        
+
 '''
 This function takes the input csv file and output csv file as arguments.
 It reads the input csv file, cleans the text data and saves the cleaned data to the output csv file.
@@ -137,9 +140,12 @@ def main():
     input_csv = sys.argv[1]
     output_csv = sys.argv[2]
     
-    df = pd.read_csv(input_csv)
-    cleaned_df = process_df(df)
-    cleaned_df.to_csv(output_csv, index=False)
+    df_chunks = pd.read_csv(input_csv, usecols=['content'], chunksize=10000)
+
+    with open(output_csv, 'w', encoding='utf-8') as f:
+        for chunk in df_chunks:
+            processed_chunk = process_df(chunk)
+            processed_chunk.to_csv(f, index=False, header=f.tell()==0)
     print(f"Cleaned data saved to {output_csv}")
 
 if __name__ == "__main__":
