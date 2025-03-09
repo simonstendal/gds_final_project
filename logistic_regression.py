@@ -1,6 +1,6 @@
 """
 This module helps prepare corpus data for logistic regression by labeling as reliable/unreliable, 
-and vectorizing its word-content of LogisticRegression.
+and vectorizing its word-content for LogisticRegression.
 
 Once prepared the remaining functions can be used to complete simple logistic regression making it
 able to predict whether a vectorized document is false or reliable.
