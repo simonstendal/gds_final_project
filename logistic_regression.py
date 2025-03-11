@@ -50,11 +50,11 @@ def logistic_regression(x_vectors, y_label):
     model.fit(x_vectors, y_label)
     return model
 
-def setup_regression(corpus_path, type_column, content_column, labels, unique_words, wandb_init=False):
+def setup_regression(test_corpus_path, type_column, content_column, labels, unique_words, wandb_init=False):
     """
-    Turns a Corpus into a Logistic regression model, by vectorizing its contents.
+    Turns a (test-data)corpus into a Logistic regression model, by vectorizing its contents.
     """
-    corpus = pd.read_csv(corpus_path)
+    corpus = pd.read_csv(test_corpus_path)
     df = vectorize_and_label_data(corpus, type_column, content_column, labels, unique_words).dropna()
     
     x = np.vstack(df["vector"].values)
