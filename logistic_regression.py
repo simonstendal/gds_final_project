@@ -7,6 +7,7 @@ able to predict whether a vectorized document is false or reliable.
 """
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
+from collections import Counter
 import pandas as pd
 import numpy as np
 import wandb
@@ -28,48 +29,60 @@ def vectorize_document(document:str, unique_words):
     Turns a list of words into a vector containing a 'Bag of Words', each entry showing the amount of
     one popular word from unique_words.
     """
-    return np.array([document.count(u_word) for u_word in unique_words])
+    return np.array([Counter(document.split()).get(u_word, 0) for u_word in unique_words])
 
 def vectorize_and_label_data(cleaned_corpus:pd.DataFrame, type_column:str, content_column:str,
                              labels, unique_words):
     """
     Creates a new dataframe from a corpus, saving the document as a vector with an associated label.
     """
-    new_df = pd.DataFrame(columns=["label", "vector"])
-
-    new_df["label"] = cleaned_corpus[type_column].apply(label_entry, args=(labels,))
-    new_df["vector"] = cleaned_corpus[content_column].apply(vectorize_document, args=(unique_words,))
-    return new_df
+    label_col = cleaned_corpus[type_column].apply(label_entry, args=(labels,))
+    vector_col = [vectorize_document(doc, unique_words) for doc in cleaned_corpus[content_column]]
+    return pd.DataFrame({"label": label_col, "vector": vector_col}).dropna()
 
 def logistic_regression(x_vectors, y_label):
     """
     Initialize an SKLearn Logistic regression model.
     """
-
     model = LogisticRegression(solver="liblinear")
     model.fit(x_vectors, y_label)
     return model
 
-def setup_regression(test_corpus_path, type_column, content_column, labels, unique_words, wandb_init=False):
+def setup_regression(train_corpus_path, val_corpus_path, type_column, content_column, labels,
+                     unique_words, test_corpus_path = None, wandb_init=False):
     """
     Turns a (test-data)corpus into a Logistic regression model, by vectorizing its contents.
     """
-    corpus = pd.read_csv(test_corpus_path)
-    df = vectorize_and_label_data(corpus, type_column, content_column, labels, unique_words).dropna()
+    corpus = pd.read_csv(train_corpus_path)
+    df = vectorize_and_label_data(corpus, type_column, content_column, labels, unique_words)
     
     x = np.vstack(df["vector"].values)
     y = df["label"]
     model = logistic_regression(x, y)
 
+
+    validation_data = pd.read_csv(val_corpus_path)
+    val_df = vectorize_and_label_data(validation_data, type_column, content_column, labels, unique_words)
+    val_x = np.vstack(val_df["vector"].values)
+    val_y = val_df["label"]
+
+    # test score left out while training:
+    # test_data = pd.read_csv(test_corpus_path)
+    # test_df = vectorize_and_label_data(test_data, type_column, content_column, labels, unique_words)
+    # test_x = np.vstack(test_df["vector"].values)
+    # test_y = test_df["label"]
+
+    # Evaluate scores:
+    train_score = model.score(x, y)
+    val_score = model.score(val_x, val_y)
+    # test_score = model.score(test_x, test_y)
+
+
     if wandb_init:
         run = wandb.init(project="gds-project-test")
-        accuracy = cross_val_score(model, x, y, scoring="accuracy").mean()
-        f1_macro = cross_val_score(model, x, y, scoring="f1_macro").mean()
-        neg_log_loss = cross_val_score(model, x, y, scoring="neg_log_loss").mean()
-
-        wandb.log({"accuracy": accuracy, "f1_macro": f1_macro, "neg_log_loss": neg_log_loss})
+        wandb.log({"train_accuracy": train_score, "val_accuracy": val_score,})
         wandb.finish()
-    return model
+    return val_score
 
 if __name__ == "__main__":
     """
@@ -78,15 +91,16 @@ if __name__ == "__main__":
     labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "unreliable", "state"],
         ["clickbait", "political", "reliable"])
     
-    # Set-up unique_words
+    #set-up unique_words
     file = open("stemmed_freq.txt").readlines()
     unique_words = []
     for line in file:
         unique_words.append(line.split(":")[0]) 
 
-    # cleaned corpus data
-    filepath = "train.csv"
+    #split corpus data
+    traindata = "train.csv"
+    valdata = "train.csv"
+    # testdata = "train.csv"
 
-    model = setup_regression(filepath, "type", "content", labels, unique_words, wandb_init=True)
-    test = np.array([[0,0,0]])
-    print(model.predict(test))
+    model_score = setup_regression(traindata, valdata, "type", "content", labels, unique_words, wandb_init=True)
+    print(model_score)
