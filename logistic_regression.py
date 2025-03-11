@@ -6,8 +6,11 @@ Once prepared the remaining functions can be used to complete simple logistic re
 able to predict whether a vectorized document is false or reliable.
 """
 from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
 import pandas as pd
 import numpy as np
+import wandb
+import wandb.integration
 
 def label_entry(type, labels):
     """
@@ -43,11 +46,11 @@ def logistic_regression(x_vectors, y_label):
     Initialize an SKLearn Logistic regression model.
     """
 
-    model = LogisticRegression()
+    model = LogisticRegression(solver="liblinear")
     model.fit(x_vectors, y_label)
     return model
 
-def setup_regression(corpus_path, type_column, content_column, labels, unique_words):
+def setup_regression(corpus_path, type_column, content_column, labels, unique_words, wandb_init=False):
     """
     Turns a Corpus into a Logistic regression model, by vectorizing its contents.
     """
@@ -56,7 +59,17 @@ def setup_regression(corpus_path, type_column, content_column, labels, unique_wo
     
     x = np.vstack(df["vector"].values)
     y = df["label"]
-    return logistic_regression(x, y)
+    model = logistic_regression(x, y)
+
+    if wandb_init:
+        run = wandb.init(project="gds-project-test")
+        accuracy = cross_val_score(model, x, y, scoring="accuracy").mean()
+        f1_macro = cross_val_score(model, x, y, scoring="f1_macro").mean()
+        neg_log_loss = cross_val_score(model, x, y, scoring="neg_log_loss").mean()
+
+        wandb.log({"accuracy": accuracy, "f1_macro": f1_macro, "neg_log_loss": neg_log_loss})
+        wandb.finish()
+    return model
 
 if __name__ == "__main__":
     """
@@ -68,6 +81,6 @@ if __name__ == "__main__":
     unique = ["state", "us", "column"] #Placeholder for top 10k words
     filepath = "news_sample.csv" #Placeholder for cleaned corpus
 
-    model = setup_regression(filepath, "type", "content", labels, unique)
+    model = setup_regression(filepath, "type", "content", labels, unique, wandb_init=True)
     test = np.array([[0,0,0]])
     print(model.predict(test))
