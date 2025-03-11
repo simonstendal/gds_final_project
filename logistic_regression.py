@@ -78,9 +78,15 @@ if __name__ == "__main__":
     labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "unreliable"],
         ["state", "clickbait", "political", "reliable"])
     
-    unique = ["state", "us", "column"] #Placeholder for top 10k words
-    filepath = "news_sample.csv" #Placeholder for cleaned corpus
+    # Set-up unique_words
+    file = open("stemmed_freq.txt").readlines()
+    unique_words = []
+    for line in file:
+        unique_words.append(line.split(":")[0]) 
 
-    model = setup_regression(filepath, "type", "content", labels, unique, wandb_init=True)
+    # cleaned corpus data
+    filepath = "train.csv"
+
+    model = setup_regression(filepath, "type", "content", labels, unique_words, wandb_init=True)
     test = np.array([[0,0,0]])
     print(model.predict(test))
