@@ -75,8 +75,8 @@ if __name__ == "__main__":
     """
     Show test-case.
     """
-    labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "unreliable"],
-        ["state", "clickbait", "political", "reliable"])
+    labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "unreliable", "state"],
+        ["clickbait", "political", "reliable"])
     
     # Set-up unique_words
     file = open("stemmed_freq.txt").readlines()
