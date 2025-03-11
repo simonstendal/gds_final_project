@@ -140,7 +140,7 @@ def main():
     input_csv = sys.argv[1]
     output_csv = sys.argv[2]
     
-    df_chunks = pd.read_csv(input_csv, usecols=['content'], chunksize=10000)
+    df_chunks = pd.read_csv(input_csv, usecols=['type','content'], chunksize=10000)
 
     with open(output_csv, 'w', encoding='utf-8') as f:
         for chunk in df_chunks:

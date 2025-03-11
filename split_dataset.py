@@ -9,11 +9,14 @@ if len(sys.argv) != 2:
 input_csv = sys.argv[1]
 
 try:
-    df = pd.read_csv(input_csv)
+    chunks = []
+    for chunk in pd.read_csv(input_csv, chunksize=10000):
+        chunks.append(chunk)
+    df = pd.concat(chunks)
 except FileNotFoundError:
     print(f"Error: File '{input_csv}' not found.")
     sys.exit(1)
-    
+
 train_df, temp_df = train_test_split(df, test_size=0.2, random_state=42, shuffle=True)
 
 val_df, test_df = train_test_split(temp_df, test_size=0.5, random_state=42, shuffle=True)
