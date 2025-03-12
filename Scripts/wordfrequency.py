@@ -30,8 +30,11 @@ def word_freq_df(df):
 
 output_file = '../Data_in_csv/processed_with_word_freq.csv'
 
-df = pd.read_csv('../Data_in_csv/995,000_rows_processed.csv')
-df['word frequency'] = list(word_freq_df(df))
-df.to_csv(output_file, mode='a', index=False)
+df_chunks = pd.read_csv('../Data_in_csv/995,000_rows_processed.csv', chunksize=10000)
+
+with open(output_file, 'w', encoding='utf-8') as f:
+    for df in df_chunks:
+        df['word frequency'] = list(word_freq_df(df))
+        df.to_csv(f, index=False, header=f.tell()==0)
 
 print(f"Completed! Combined data saved to {output_file}")
