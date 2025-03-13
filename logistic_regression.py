@@ -8,6 +8,7 @@ able to predict whether a vectorized document is false or reliable.
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_score, train_test_split
 from collections import Counter
+from sklearn.feature_extraction.text import CountVectorizer
 import pandas as pd
 import numpy as np
 import wandb
@@ -22,49 +23,29 @@ def label_entry(type, labels):
     elif type in labels[1]:
         return "reliable"
     else:
+        print(type)
         return None
 
-def vectorize_document(document:str, unique_words):
-    """
-    Turns a list of words into a vector containing a 'Bag of Words', each entry showing the amount of
-    one popular word from unique_words.
-    """
-    return np.array([Counter(document.split()).get(u_word, 0) for u_word in unique_words])
 
-def vectorize_and_label_data(cleaned_corpus:pd.DataFrame, type_column:str, content_column:str,
-                             labels, unique_words):
-    """
-    Creates a new dataframe from a corpus, saving the document as a vector with an associated label.
-    """
-    label_col = cleaned_corpus[type_column].apply(label_entry, args=(labels,))
-    vector_col = [vectorize_document(doc, unique_words) for doc in cleaned_corpus[content_column]]
-    return pd.DataFrame({"label": label_col, "vector": vector_col}).dropna()
-
-def logistic_regression(x_vectors, y_label):
+def logistic_regression(cleaned_corpus:pd.DataFrame, labels):
     """
     Initialize an SKLearn Logistic regression model.
     """
+    label_col = cleaned_corpus['type'].apply(label_entry, args=(labels,))
+    vectorizer = CountVectorizer(max_features=1000)
+    vector_col = vectorizer.fit_transform(cleaned_corpus['content'])
     model = LogisticRegression(solver="liblinear")
-    model.fit(x_vectors, y_label)
+    model.fit(vector_col, label_col)
     return model
 
-def setup_regression(train_corpus_path, val_corpus_path, type_column, content_column, labels,
-                     unique_words, test_corpus_path = None, wandb_init=False):
-    """
-    Turns a (test-data)corpus into a Logistic regression model, by vectorizing its contents.
-    """
-    corpus = pd.read_csv(train_corpus_path)
-    df = vectorize_and_label_data(corpus, type_column, content_column, labels, unique_words)
-    
-    x = np.vstack(df["vector"].values)
-    y = df["label"]
-    model = logistic_regression(x, y)
-
-
-    validation_data = pd.read_csv(val_corpus_path)
-    val_df = vectorize_and_label_data(validation_data, type_column, content_column, labels, unique_words)
-    val_x = np.vstack(val_df["vector"].values)
-    val_y = val_df["label"]
+def test_model(model:LogisticRegression, validation_corpus:pd.DataFrame, test_corpos=None, wandb_init = False):
+    label_col = validation_corpus["type"].apply(label_entry, args=(labels,))
+    vectorizer = CountVectorizer(max_features=1000)
+    vector_col = vectorizer.fit_transform(validation_corpus["content"])
+    if test_corpos:
+        label_col_test = validation_corpus["type"].apply(label_entry, args=(labels,))
+        vector_col_test = vectorizer.fit_transform(validation_corpus["content"])
+    # test_score = model.score(vector_col, label_col_test)
 
     # test score left out while training:
     # test_data = pd.read_csv(test_corpus_path)
@@ -73,14 +54,13 @@ def setup_regression(train_corpus_path, val_corpus_path, type_column, content_co
     # test_y = test_df["label"]
 
     # Evaluate scores:
-    train_score = model.score(x, y)
-    val_score = model.score(val_x, val_y)
+    val_score = model.score(vector_col, label_col)
     # test_score = model.score(test_x, test_y)
 
 
     if wandb_init:
-        run = wandb.init(project="gds-project-test")
-        wandb.log({"train_accuracy": train_score, "val_accuracy": val_score,})
+        wandb.init(project="gds-project-test")
+        wandb.log({ "val_accuracy": val_score,})
         wandb.finish()
     return val_score
 
@@ -88,19 +68,15 @@ if __name__ == "__main__":
     """
     Show test-case.
     """
-    labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "unreliable", "state"],
+    labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "unreliable", "state","unknown"],
         ["clickbait", "political", "reliable"])
     
-    #set-up unique_words
-    file = open("stemmed_freq.txt").readlines()
-    unique_words = []
-    for line in file:
-        unique_words.append(line.split(":")[0]) 
 
     #split corpus data
-    traindata = "train.csv"
-    valdata = "train.csv"
-    # testdata = "train.csv"
+    traindata = pd.read_csv("train.csv").dropna()
+    valdata = pd.read_csv("validation.csv").dropna()
+    # testdata = "test.csv"
 
-    model_score = setup_regression(traindata, valdata, "type", "content", labels, unique_words, wandb_init=True)
+    model = logistic_regression(traindata, labels)
+    model_score=test_model(model,valdata)
     print(model_score)
