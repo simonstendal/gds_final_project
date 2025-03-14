@@ -23,7 +23,7 @@ def label_entry(type, labels):
     elif type in labels[1]:
         return "reliable"
     else:
-        print(type)
+        print(f"MISSED TYPE:{type}")
         return None
 
 
@@ -68,8 +68,8 @@ if __name__ == "__main__":
     """
     Show test-case.
     """
-    labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "unreliable", "state","unknown"],
-        ["clickbait", "political", "reliable"])
+    labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "unreliable", "state","unknown","rumor"],
+        ["clickbait", "political", "reliable", "2018-02-10 13:43:39.521661"])
     
 
     #split corpus data
