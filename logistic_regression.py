@@ -69,7 +69,7 @@ if __name__ == "__main__":
     Show test-case.
     """
     labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "state"],
-        ["clickbait", "political", "reliable", ])
+        ["clickbait", "political", "reliable"])
     unwanted_labels = ["unreliable", "rumor", "unknown", "2018-02-10 13:43:39.521661"]
 
     #split corpus data
