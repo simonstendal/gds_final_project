@@ -68,13 +68,16 @@ if __name__ == "__main__":
     """
     Show test-case.
     """
-    labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "unreliable", "state","unknown","rumor"],
-        ["clickbait", "political", "reliable", "2018-02-10 13:43:39.521661"])
-    
+    labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "state"],
+        ["clickbait", "political", "reliable", ])
+    unwanted_labels = ["unreliable", "rumor", "unknown", "2018-02-10 13:43:39.521661"]
 
     #split corpus data
+
     traindata = pd.read_csv("train.csv").dropna()
+    traindata = traindata[~traindata['type'].isin(unwanted_labels)]
     valdata = pd.read_csv("validation.csv").dropna()
+    valdata = valdata[~valdata['type'].isin(unwanted_labels)]
     # testdata = "test.csv"
 
     model = logistic_regression(traindata, labels)
