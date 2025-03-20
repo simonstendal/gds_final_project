@@ -15,7 +15,7 @@ def neural_network(train_x:pd.Series, train_y:pd.Series, labels):
     """
     Initialize an SKLearn classifier neural network.
     """
-    classifier = MLPClassifier(solver='adam', alpha=1e-4, hidden_layer_sizes=(128, 64, 32), activation='relu', random_state=1, max_iter=500)
+    classifier = MLPClassifier(solver='adam', alpha=1e-4, hidden_layer_sizes=(50,), activation='relu', random_state=1, max_iter=500)
 
     vector_col = vectorizer.fit_transform(train_x)
     label_col = train_y.to_numpy()
@@ -56,9 +56,9 @@ if __name__ == "__main__":
     """
     Show test-case.
     """
-    labels = (["fake", "satire", "bias", "conspiracy", "junksci", "hate", "state"],
+    labels = (["fake", "satire", "bias", "conspiracy", "junksci", "state"],
         ["clickbait", "political", "reliable"])
-    unwanted_labels = ["unreliable", "rumor", "unknown", "2018-02-10 13:43:39.521661"]
+    unwanted_labels = ["unreliable", "rumor", "unknown", "hate","2018-02-10 13:43:39.521661"]
 
     #split corpus data
     data = pd.read_csv("cleaned_corpus.csv").dropna()
