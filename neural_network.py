@@ -171,7 +171,7 @@ if __name__ == "__main__":
     liar_f1 = test_model(model, liar_X, liar_Y)
     print(f"LIAR Dataset F1 (Cross-domain): {liar_f1}")
 
-    # --- TASK 3: Comparison ---
+    # TASK 3: Comparison
     print("Comparison of Results:")
     print(f"FakeNewsCorpus Validation F1: {fake_news_val_f1}")
     print(f"LIAR Dataset F1 (Cross-domain): {liar_f1}")
