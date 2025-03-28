@@ -1,10 +1,12 @@
 # Final Project README file
 
-If you are in the GitHub Repository, all of our final project can be found in the folder tiled 'Final Project'
+If you are in the GitHub Repository, all of our final project can be found in the folder tiled 'Final_Project'
 
 ## Recreating our code directory
 
 To begin, all of our code can be found in the file labeled 'final_project.ipynb'. Each chunk of code is labeled with the corresponding task. For example, the 'Preprocessing' section can be found under the 'Prcess Data' label.
+
+As well, our project files can all be gotten by pulling from our GitHub Repository, located at the following link: https://github.com/simonstendal/gds_final_project/tree/master. In order to properly render the photos below, see the README file located in the 'Final_Project' directory in GitHub.
 
 The first chunk of code in our Jupyter Notebook will download all dependencies required to run the rest of our code. However, we also provide a 'requirements.txt' file, in the case you would like to create a separete environment to run our project in. 
 
